@@ -5,7 +5,7 @@ FROM golang:1.20
 WORKDIR /app
 
 # モジュールファイルと依存関係をコピー
-COPY go.mod go.sum ./
+COPY ../api-db/go.mod ../api-db/go.sum ./
 
 # 依存関係を取得
 RUN go mod download
