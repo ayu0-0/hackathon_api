@@ -5,13 +5,13 @@ FROM golang:1.22
 WORKDIR /app
 
 # モジュールファイルと依存関係をコピー
-COPY ../api-db/go.mod .
+COPY go.mod .
 
 # 依存関係を取得
 RUN go mod download
 
 # アプリケーションのソースコードをコピー
-COPY . .
+COPY api-docker .
 
 # アプリケーションをビルド
 RUN go build -o main .
