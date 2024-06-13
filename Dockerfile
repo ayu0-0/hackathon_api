@@ -11,7 +11,7 @@ COPY go.mod .
 RUN go mod download
 
 # アプリケーションのソースコードをコピー
-COPY api-docker .
+COPY . .
 
 # アプリケーションをビルド
 RUN go build -o main .
