@@ -1,2 +1,25 @@
-FROM mysql:8.0
-ENV LANG ja_JP.UTF-8
+
+
+# ベースイメージとして公式のGoイメージを使用
+FROM golang:1.20
+
+# ワーキングディレクトリを設定
+WORKDIR /app
+
+# モジュールファイルと依存関係をコピー
+COPY go.mod go.sum ./
+
+# 依存関係を取得
+RUN go mod download
+
+# アプリケーションのソースコードをコピー
+COPY . .
+
+# アプリケーションをビルド
+RUN go build -o main .
+
+# コンテナの実行ポートを設定
+EXPOSE 8080
+
+# アプリケーションを実行
+CMD ["./main"]
