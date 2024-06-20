@@ -1,10 +1,10 @@
 version: "3.8"
 
 services:
-  curricurum_db:
-    container_name: curriculum_db
+  curricurum_db5:
+    container_name: curriculum_db5
     build:
-      context: api-docker
+      context: .
       dockerfile: Dockerfile
     platform: linux/x86_64
     tty: true
@@ -14,12 +14,12 @@ services:
       - ./.env
     volumes:
       - type: volume
-        source: curriculum_mysql
+        source: curriculum_mysql5
         target: /var/lib/mysql
       - type: bind
         source: ./init
         target: /docker-entrypoint-initdb.d
 
 volumes:
-  curriculum_mysql:
-    name: curriculum_mysql
+  curriculum_mysql5:
+    name: curriculum_mysql5
