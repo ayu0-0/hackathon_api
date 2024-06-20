@@ -59,12 +59,14 @@ func init() {
 		fmt.Printf("読み込み出来ませんでした: %v", err)
 	}
 
-	mysqlUser := os.Getenv("MYSQLUSER")
-	mysqlUserPwd := os.Getenv("MYSQLUSERPASSWORD")
-	mysqlDatabase := os.Getenv("MYSQLDATABASE")
+	// DB接続のための準備
+	mysqlUser := os.Getenv("MYSQL_USER")
+	mysqlPwd := os.Getenv("MYSQL_PWD")
+	mysqlHost := os.Getenv("MYSQL_HOST")
+	mysqlDatabase := os.Getenv("MYSQL_DATABASE")
 
-	// ①-2
-	_db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@(localhost:3306)/%s", mysqlUser, mysqlUserPwd, mysqlDatabase))
+	connStr := fmt.Sprintf("%s:%s@%s/%s", mysqlUser, mysqlPwd, mysqlHost, mysqlDatabase)
+	_db, err := sql.Open("mysql", connStr)
 	if err != nil {
 		log.Fatalf("fail: sql.Open, %v\n", err)
 	}
