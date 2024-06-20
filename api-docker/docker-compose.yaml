@@ -5,7 +5,7 @@ services:
     container_name: curriculum_db5
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: ../Dockerfile
     platform: linux/x86_64
     tty: true
     ports:
