@@ -47,6 +47,13 @@ type Replies struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+type Follows struct {
+	Id             string    `json:"id"`
+	FollowUserId   string    `json:"follow_user_id"`
+	FollowedUserId string    `json:"followed_user_id"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
 // ① GoプログラムからMySQLへ接続
 var db *sql.DB
 
@@ -75,6 +82,121 @@ func init() {
 		log.Fatalf("fail: _db.Ping, %v\n", err)
 	}
 	db = _db
+}
+
+func followsHandler(w http.ResponseWriter, r *http.Request) {
+
+	if r.Method == http.MethodOptions {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Accept, X-Requested-With, Authorization, body") // リクエストヘッダーの許可設定
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	switch r.Method {
+	case http.MethodOptions:
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Accept, X-Requested-With, Authorization, body")
+		w.WriteHeader(http.StatusOK)
+
+	case http.MethodGet:
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+
+		// ②-2
+		rows, err := db.Query("SELECT id, follow_user_id, followed_user_id, created_at FROM follows")
+		if err != nil {
+			log.Printf("fail: db.Query, %v\n", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		// ②-3
+		follows := make([]Follows, 0)
+		for rows.Next() {
+			var f Follows
+			var createdAt string
+			if err := rows.Scan(&f.Id, &f.FollowUserId, &f.FollowedUserId, &createdAt); err != nil {
+				log.Printf("fail: rows.Scan, %v\n", err)
+
+				if err := rows.Close(); err != nil { // 500を返して終了するが、その前にrowsのClose処理が必要
+					log.Printf("fail: rows.Close(), %v\n", err)
+				}
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			// createdAt を time.Time 型に変換
+			f.CreatedAt, err = time.Parse("2006-01-02 15:04:05", createdAt)
+			if err != nil {
+				log.Printf("fail: time.Parse, %v\n", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			follows = append(follows, f)
+		}
+
+		// ②-4
+		bytes, err := json.Marshal(follows)
+		if err != nil {
+			log.Printf("fail: json.Marshal, %v\n", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(bytes)
+
+	case http.MethodPost:
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Accept, X-Requested-With, Authorization, body")
+
+		// リクエストボディをJSON形式でデコード
+		var newFollow Follows
+		err := json.NewDecoder(r.Body).Decode(&newFollow)
+		if err != nil {
+			log.Printf("fail: json decode, %v\n", err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		t := time.Now()
+		entropy := ulid.Monotonic(rand.New(rand.NewSource(t.UnixNano())), 0)
+		ulid := ulid.MustNew(ulid.Timestamp(t), entropy)
+
+		// ULIDを文字列として表示
+		fmt.Println(ulid.String())
+
+		response := struct {
+			ID string `json:"id"`
+		}{
+			ID: ulid.String(),
+		}
+
+		json.NewEncoder(w).Encode(response)
+
+		// データベースに新しいユーザーを挿入
+		log.Printf("Inserting follows with id: %s, follow_user_id: %s, followed_user_id: %s, created_at: %v", ulid.String(), newFollow.FollowUserId, newFollow.FollowedUserId, t)
+
+		_, err = db.Exec("INSERT INTO follows (id,follow_user_id,followed_user_id, created_at) VALUES (?, ?, ?, ?)", ulid.String(), newFollow.FollowUserId, newFollow.FollowedUserId, t)
+		if err != nil {
+			log.Printf("fail: db.Exec, %v\n", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusCreated) // リソースの作成を通知
+
+		fmt.Fprintf(w, "Follow %s created successfully", newFollow.Id)
+
+	default:
+		log.Printf("fail: HTTP Method is %s\n", r.Method)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+
+	}
 }
 
 func repliesHandler(w http.ResponseWriter, r *http.Request) {
@@ -571,6 +693,7 @@ func main() {
 	http.HandleFunc("/posts", postsHandler)
 	http.HandleFunc("/likes", likesHandler)
 	http.HandleFunc("/replies", repliesHandler)
+	http.HandleFunc("/follows", followsHandler)
 
 	// ③ Ctrl+CでHTTPサーバー停止時にDBをクローズする
 	closeDBWithSysCall()
