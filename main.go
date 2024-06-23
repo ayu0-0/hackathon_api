@@ -596,7 +596,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		*/
 
 		// ②-2
-		rows, err := db.Query("SELECT id, name, userid FROM users")
+		rows, err := db.Query("SELECT id, name,email, userid FROM users")
 		if err != nil {
 			log.Printf("fail: db.Query, %v\n", err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -607,7 +607,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		users := make([]UserResForHTTPGet, 0)
 		for rows.Next() {
 			var u UserResForHTTPGet
-			if err := rows.Scan(&u.Id, &u.Name, &u.Userid); err != nil {
+			if err := rows.Scan(&u.Id, &u.Name, &u.Email, &u.Userid); err != nil {
 				log.Printf("fail: rows.Scan, %v\n", err)
 
 				if err := rows.Close(); err != nil { // 500を返して終了するが、その前にrowsのClose処理が必要
